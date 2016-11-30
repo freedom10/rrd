@@ -17,32 +17,6 @@ import (
 	"unsafe"
 )
 
-type cstring C.char
-
-func newCstring(s string) *cstring {
-	cs := C.malloc(C.size_t(len(s) + 1))
-	buf := (*[1<<31 - 1]byte)(cs)[:len(s)+1]
-	copy(buf, s)
-	buf[len(s)] = 0
-	return (*cstring)(cs)
-}
-
-func (cs *cstring) Free() {
-	if cs != nil {
-		C.free(unsafe.Pointer(cs))
-	}
-}
-
-func (cs *cstring) String() string {
-	buf := (*[1<<31 - 1]byte)(unsafe.Pointer(cs))
-	for n, b := range buf {
-		if b == 0 {
-			return string(buf[:n])
-		}
-	}
-	panic("rrd: bad C string")
-}
-
 var mutex sync.Mutex
 
 func makeArgs(args []string) []*C.char {
@@ -88,12 +62,14 @@ func (c *Creator) create() error {
 	return makeError(e)
 }
 
-func (u *Updater) update(args []*cstring) error {
+func (u *Updater) update(_args []string) error {
+	args := makeArgs(_args)
+	defer freeArgs(args)
 	e := C.rrdUpdate(
-		(*C.char)(u.filename),
-		(*C.char)(u.template),
+		(*C.char)(u.filename.p()),
+		(*C.char)(u.template.p()),
 		C.int(len(args)),
-		(**C.char)(unsafe.Pointer(&args[0])),
+		&args[0],
 	)
 	return makeError(e)
 }
@@ -530,7 +506,7 @@ func (e *Exporter) xport(start, end time.Time, step time.Duration) (XportResult,
 	}
 	C.free(unsafe.Pointer(cLegends))
 
-	rowCnt := (int(cEnd) - int(cStart)) / int(cStep) //+ 1 // FIXED: + 1 added extra uninitialized value
+	rowCnt := (int(cEnd)-int(cStart))/int(cStep) + 1
 	valuesLen := colCnt * rowCnt
 	values := make([]float64, valuesLen)
 	sliceHeader := (*reflect.SliceHeader)((unsafe.Pointer(&values)))
