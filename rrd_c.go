@@ -116,6 +116,7 @@ var (
 
 	oStep    = C.CString("--step")
 	oMaxRows = C.CString("-m")
+	oFont    = C.CString("-n")
 )
 
 func ftoa(f float64) string {
@@ -164,6 +165,12 @@ func (g *Grapher) makeArgs(filename string, start, end time.Time) []*C.char {
 		oEnd, i64toc(end.Unix()),
 		oTitle, C.CString(g.title),
 		oVlabel, C.CString(g.vlabel),
+	}
+	if len(g.font) != 0 {
+		for _,v := range g.font {
+			args = append(args, oFont,C.CString(v))
+		}
+
 	}
 	if g.width != 0 {
 		args = append(args, oWidth, utoc(g.width))
@@ -385,7 +392,6 @@ func (g *Grapher) graph(filename string, start, end time.Time) (GraphInfo, []byt
 
 	mutex.Lock() // rrd_graph_v isn't thread safe
 	defer mutex.Unlock()
-
 	err := makeError(C.rrdGraph(
 		&i,
 		C.int(len(args)),

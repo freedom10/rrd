@@ -181,7 +181,7 @@ type Grapher struct {
 	interlaced  bool
 
 	daemon string
-
+	font []string
 	args []string
 }
 
@@ -198,6 +198,9 @@ func NewGrapher() *Grapher {
 		unitsExponent: minInt,
 		colors:        make(map[string]string),
 	}
+}
+func (g *Grapher) SetFont(font string) {
+	g.font = append(g.font,font)
 }
 
 func (g *Grapher) SetTitle(title string) {
@@ -400,6 +403,7 @@ func (g *Grapher) SaveGraph(filename string, start, end time.Time) (GraphInfo, e
 	return gi, err
 }
 
+
 type FetchResult struct {
 	Filename string
 	Cf       string
@@ -472,4 +476,12 @@ type XportResult struct {
 
 func (r *XportResult) ValueAt(legendIndex, rowIndex int) float64 {
 	return r.values[len(r.Legends)*rowIndex+legendIndex]
+}
+
+func FileExistEx(_path string) bool {
+	_, err := os.Stat(_path)
+	if err != nil {
+		return false
+	}
+	return true
 }
